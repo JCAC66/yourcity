@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Actividad: Problemas de la Ciudad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; overflow: hidden; }
+    .confetti { position: absolute; width: 10px; height: 10px; background-color: #f00; opacity: 0.7; border-radius: 50%; animation: fall 5s linear forwards; }
+    @keyframes fall {
+      to { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+    }
+    .correct-drop { border: 3px solid #22c55e !important; background-color: #f0fdf4; }
+    .incorrect-drop { border: 3px solid #ef4444 !important; }
+    .feedback-message { transition: opacity 0.5s ease-in-out; }
+    .dragging { opacity: 0.5; transform: scale(1.1); }
+    .drop-zone { transition: all 0.2s ease-in-out; }
+    .drop-zone.drag-over {
+      transform: scale(1.05);
+      background-color: #f0f9ff;
+      border-color: #38bdf8;
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+  <div id="activity-container" class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl p-6 md:p-10 mx-auto">
+    <div class="text-center mb-8">
+      <h1 class="text-3xl md:text-4xl font-bold text-slate-900">YOUR VOICE COUNTS!</h1>
+      <p class="text-slate-500 mt-2">Match the pictures to the correct opinions.</p>
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+      <!-- Imagenes -->
+      <div class="flex flex-col items-center p-4 bg-slate-50 rounded-lg border-2 border-dashed border-slate-300">
+        <h2 class="text-lg font-semibold mb-4 text-slate-700">Pictures</h2>
+        <div id="image-pool" class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 gap-4 w-full">
+          <div id="img-a" draggable="true" class="cursor-grab active:cursor-grabbing rounded-lg overflow-hidden shadow-md transition-transform duration-200 hover:scale-105">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Traffic_jam_in_Bangkok.jpg/640px-Traffic_jam_in_Bangkok.jpg" alt="Contaminación por tráfico" class="w-full h-auto object-cover"/>
+            <p class="text-center bg-red-500 text-white font-bold py-1">a</p>
+          </div>
+          <div id="img-b" draggable="true" class="cursor-grab active:cursor-grabbing rounded-lg overflow-hidden shadow-md transition-transform duration-200 hover:scale-105">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Overcrowded_Parking_Lot.jpg/640px-Overcrowded_Parking_Lot.jpg" alt="Estacionamiento lleno" class="w-full h-auto object-cover"/>
+            <p class="text-center bg-blue-500 text-white font-bold py-1">b</p>
+          </div>
+          <div id="img-c" draggable="true" class="cursor-grab active:cursor-grabbing rounded-lg overflow-hidden shadow-md transition-transform duration-200 hover:scale-105">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/Dark_alley.jpg/640px-Dark_alley.jpg" alt="Callejón oscuro" class="w-full h-auto object-cover"/>
+            <p class="text-center bg-gray-800 text-white font-bold py-1">c</p>
+          </div>
+        </div>
+      </div>
+      <!-- Opiniones -->
+      <div class="space-y-4">
+        <div class="opinion-block p-4 bg-white rounded-lg shadow-sm">
+          <p class="text-slate-600 mb-3">1. The streets are dark and dangerous. I don't think there are enough police officers. And we need more streetlights.</p>
+          <div id="drop-1" data-correct="img-c" class="drop-zone border-2 border-dashed border-slate-300 rounded-lg min-h-[100px] flex items-center justify-center bg-slate-50">
+            <span class="text-slate-400">Drop picture here</span>
+          </div>
+        </div>
+        <div class="opinion-block p-4 bg-white rounded-lg shadow-sm">
+          <p class="text-slate-600 mb-3">2. There's too much pollution from cars, motorcycles, and old buses. In cities with less pollution, people are healthier.</p>
+          <div id="drop-2" data-correct="img-a" class="drop-zone border-2 border-dashed border-slate-300 rounded-lg min-h-[100px] flex items-center justify-center bg-slate-50">
+            <span class="text-slate-400">Drop picture here</span>
+          </div>
+        </div>
+        <div class="opinion-block p-4 bg-white rounded-lg shadow-sm">
+          <p class="text-slate-600 mb-3">3. There should be fewer cars, but I think that the biggest problem is parking. There just isn't enough parking.</p>
+          <div id="drop-3" data-correct="img-b" class="drop-zone border-2 border-dashed border-slate-300 rounded-lg min-h-[100px] flex items-center justify-center bg-slate-50">
+            <span class="text-slate-400">Drop picture here</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mt-8 text-center">
+      <div id="feedback-message" class="feedback-message h-6 mb-4 text-lg font-semibold opacity-0"></div>
+      <button id="reset-btn" class="bg-slate-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-slate-700 transition-colors hidden">Try Again</button>
+    </div>
+  </div>
+  <script>
+    const draggables = document.querySelectorAll('[draggable="true"]');
+    const dropZones = document.querySelectorAll('.drop-zone');
+    const imagePool = document.getElementById('image-pool');
+    const feedbackMessage = document.getElementById('feedback-message');
+    const resetButton = document.getElementById('reset-btn');
+    let draggedItem = null;
+    let correctAnswers = 0;
+
+    draggables.forEach(draggable => {
+      draggable.addEventListener('dragstart', (e) => {
+        draggedItem = e.target.closest('[draggable="true"]');
+        setTimeout(() => {
+          draggedItem.classList.add('dragging');
+        }, 0);
+      });
+      draggable.addEventListener('dragend', () => {
+        draggedItem.classList.remove('dragging');
+        draggedItem = null;
+      });
+    });
+
+    dropZones.forEach(zone => {
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!zone.hasChildNodes() || zone.querySelector('span')) {
+          zone.classList.add('drag-over');
+        }
+      });
+      zone.addEventListener('dragleave', () => {
+        zone.classList.remove('drag-over');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag-over');
+        if (draggedItem && (!zone.hasChildNodes() || zone.querySelector('span'))) {
+          zone.innerHTML = '';
+          zone.appendChild(draggedItem);
+          checkAnswer(zone);
+          checkCompletion();
+        }
+      });
+    });
+
+    function checkAnswer(zone) {
+      const droppedImgId = zone.querySelector('[draggable="true"]').id;
+      const correctImgId = zone.dataset.correct;
+      if (droppedImgId === correctImgId) {
+        zone.classList.add('correct-drop');
+        zone.classList.remove('incorrect-drop');
+        zone.querySelector('[draggable="true"]').setAttribute('draggable', 'false');
+      } else {
+        zone.classList.add('incorrect-drop');
+        zone.classList.remove('correct-drop');
+      }
+    }
+
+    function checkCompletion() {
+      correctAnswers = document.querySelectorAll('.correct-drop').length;
+      if (correctAnswers === 3) {
+        feedbackMessage.textContent = "🎉 Congratulations! All correct! 🎉";
+        feedbackMessage.className = 'feedback-message h-6 mb-4 text-lg font-semibold opacity-100 text-green-600';
+        launchConfetti();
+        resetButton.classList.remove('hidden');
+      } else if (document.querySelectorAll('.drop-zone > div').length === 3) {
+        feedbackMessage.textContent = "Some answers are incorrect. Try again!";
+        feedbackMessage.className = 'feedback-message h-6 mb-4 text-lg font-semibold opacity-100 text-red-600';
+        resetButton.classList.remove('hidden');
+      }
+    }
+
+    resetButton.addEventListener('click', () => {
+      const allImages = [document.getElementById('img-a'), document.getElementById('img-b'), document.getElementById('img-c')];
+      allImages.forEach(img => {
+        img.setAttribute('draggable', 'true');
+        imagePool.appendChild(img);
+      });
+      dropZones.forEach(zone => {
+        zone.innerHTML = '<span class="text-slate-400">Drop picture here</span>';
+        zone.classList.remove('correct-drop', 'incorrect-drop');
+      });
+      resetButton.classList.add('hidden');
+      feedbackMessage.textContent = '';
+      feedbackMessage.className = 'feedback-message h-6 mb-4 text-lg font-semibold opacity-0';
+      correctAnswers = 0;
+    });
+
+    function launchConfetti() {
+      const confettiCount = 200;
+      const container = document.body;
+      for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        confetti.classList.add('confetti');
+        const colors = ['#ef4444', '#3b82f6', '#22c55e', '#eab308', '#8b5cf6', '#ec4899'];
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.left = Math.random() * 100 + 'vw';
+        confetti.style.top = -20 + 'px';
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
+        container.appendChild(confetti);
+        setTimeout(() => {
+          confetti.remove();
+        }, 5000);
+      }
+    }
+  </script>
+</body>
+</html>
